@@ -1,14 +1,15 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { getDatabaseConfig } from './config/database.config';
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { EventsModule } from './events/events.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { getDatabaseConfig } from './config/database.config';
+import { EventsModule } from './events/events.module';
 import { PaymentsModule } from './payments/payments.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -19,6 +20,15 @@ import { PaymentsModule } from './payments/payments.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: getDatabaseConfig,
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        },
+      }),
     }),
     AuthModule,
     UsersModule,
