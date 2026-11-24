@@ -18,6 +18,10 @@ import { LoginDto } from './dto/login.dto';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  ApiStandardErrorResponse,
+  ApiStandardResponse,
+} from '../common/swagger/api-response.decorator';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 
 @ApiTags('Auth')
@@ -30,6 +34,19 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
+  @ApiStandardResponse(undefined, {
+    status: 201,
+    description: 'User registered successfully',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        user: { type: 'object' },
+        accessToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(400, 'Validation failed')
+  @ApiStandardErrorResponse(409, 'Email is already registered')
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
@@ -44,6 +61,19 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
+  @ApiStandardResponse(undefined, {
+    status: 200,
+    description: 'Authenticated successfully',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        user: { type: 'object' },
+        accessToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(400, 'Validation failed')
+  @ApiStandardErrorResponse(401, 'Invalid email or password')
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -59,6 +89,18 @@ export class AuthController {
   @UseGuards(JwtRefreshGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate refresh token and issue new access token' })
+  @ApiStandardResponse(undefined, {
+    status: 200,
+    description: 'Tokens rotated successfully',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(401, 'Unauthorized')
+  @ApiStandardErrorResponse(403, 'Refresh token reuse detected')
   async refresh(
     @CurrentUser('sub') userId: string,
     @CurrentUser('refreshToken') refreshToken: string,
@@ -74,6 +116,17 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout and clear refresh token cookie' })
+  @ApiStandardResponse(undefined, {
+    status: 200,
+    description: 'Logged out successfully',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Logged out successfully' },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(401, 'Unauthorized')
   async logout(
     @CurrentUser('sub') userId: string,
     @Res({ passthrough: true }) res: Response,

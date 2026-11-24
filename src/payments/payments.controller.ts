@@ -14,6 +14,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  ApiStandardErrorResponse,
+  ApiStandardResponse,
+} from '../common/swagger/api-response.decorator';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentsService } from './payments.service';
 
@@ -26,6 +30,23 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a Stripe PaymentIntent for a pending booking' })
+  @ApiStandardResponse(undefined, {
+    status: 201,
+    description: 'Stripe PaymentIntent created',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        paymentIntentId: { type: 'string' },
+        clientSecret: { type: 'string' },
+        amount: { type: 'number' },
+        currency: { type: 'string', example: 'usd' },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(400, 'Booking cannot be paid')
+  @ApiStandardErrorResponse(401, 'Unauthorized')
+  @ApiStandardErrorResponse(403, 'Forbidden resource')
+  @ApiStandardErrorResponse(404, 'Booking not found')
   createPaymentIntent(
     @CurrentUser('sub') userId: string,
     @Body() dto: CreatePaymentIntentDto,
@@ -36,6 +57,17 @@ export class PaymentsController {
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stripe Webhook listener (called by Stripe servers)' })
+  @ApiStandardResponse(undefined, {
+    status: 200,
+    description: 'Webhook processed',
+    dataSchema: {
+      type: 'object',
+      properties: {
+        received: { type: 'boolean', example: true },
+      },
+    },
+  })
+  @ApiStandardErrorResponse(400, 'Invalid webhook payload or signature')
   handleWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
